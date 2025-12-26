@@ -1,6 +1,13 @@
+from typing import Any, Dict
+
+# Custom Types
+StravaActivity = Dict[str, Any]
+StravaAthlete = Dict[str, Any]
+
 # Colors
 BG_TOP = (18, 18, 20)
 BG_BOTTOM = (30, 30, 35)
+MAP_BG = (15, 15, 18)
 STRAVA_ORANGE = (252, 76, 2)
 TEXT_PRIMARY = (255, 255, 255)
 TEXT_MUTED = (180, 180, 185)

@@ -3,14 +3,10 @@ import os
 import requests
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict
 
 
 STRAVA_TOKEN_FILE = "strava_tokens.json"
 STRAVA_BASE_URL = "https://www.strava.com/api/v3"
-
-
-StravaAthlete = Dict[str, Any]
 
 
 class StravaClient:

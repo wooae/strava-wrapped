@@ -1,10 +1,10 @@
 import os
 from datetime import datetime
-from typing import Dict
+from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import pandas as pd
-from strava_client import StravaAthlete, StravaClient
+from strava_client import StravaClient
 
 from constants import *
 from image_helpers import *
@@ -58,12 +58,16 @@ def top_k_sports_summary(summary_df: pd.DataFrame, athlete: StravaAthlete, k: in
     print(f"\nSaved graphic to strava_summary_{YEAR}.png")
 
 
-def sport_summary(stats: Dict[str, float], athlete: StravaAthlete) -> None:
+def sport_summary(
+    stats: Dict[str, float], athlete: StravaAthlete, activities: List[StravaActivity], activity_type: str
+) -> None:
     """Creates an Instagram story for the specified activity in stats
 
     Args:
         stats (Dict[str, Float]): dictionary containing activity stats for a particular type of activity
         athlete (StravaAthlete): athlete data
+        activities (List[StravaActivity]): list of activities
+        activity_type (str): type of activity (e.g. Run, Ride, AlpineSki, Hike, etc.)
     """
     # create canvas and background
     img = Image.new("RGB", (W, H), BG_TOP)
@@ -91,7 +95,7 @@ def sport_summary(stats: Dict[str, float], athlete: StravaAthlete) -> None:
     draw.text((340, 240), f"{first_name}'s {YEAR} WRAPPED", font=subtitle_font, fill=TEXT_MUTED)
 
     # activity badge
-    badge_center = (W - 250, 1600)
+    badge_center = (W - 250, 600)
     badge_radius = 180
 
     draw.ellipse(
@@ -120,8 +124,8 @@ def sport_summary(stats: Dict[str, float], athlete: StravaAthlete) -> None:
 
     display_stats = [
         (f"{activity_type.upper()}S", f"{stats['count']}"),
-        ("DISTANCE", f"{int(stats['total_distance_miles'])} miles"),
-        ("ELEVATION", f"{int(stats['total_elevation_gain_ft'])} ft"),
+        ("DISTANCE", f"{format_number_with_commas(int(stats['total_distance_miles']))} miles"),
+        ("ELEVATION", f"{format_number_with_commas(int(stats['total_elevation_gain_ft']))} ft"),
         ("TIME", format_time(stats["moving_time_s"])),
     ]
 
@@ -131,10 +135,46 @@ def sport_summary(stats: Dict[str, float], athlete: StravaAthlete) -> None:
         draw.text((120, y), label, font=stat_title_font, fill=TEXT_MUTED)
         draw.text((120, y + 50), value, font=stat_value_font, fill=TEXT_PRIMARY)
 
+    # activity display section
+    activity_highlights_y = 1150
+    draw.text((120, activity_highlights_y), f"{YEAR} HIGHLIGHTS", font=stat_title_font, fill=TEXT_PRIMARY)
+    activity_longest_distance = get_best_activity(activities=activities, activity_type=activity_type, metric="distance")
+    activity_longest_img = generate_activity_story(
+        activity=activity_longest_distance, width=400, height=400, title=f"Longest {activity_type}"
+    )
+    img.paste(activity_longest_img, (100, 1200))
+
+    activity_most_kudos = get_best_activity(activities=activities, activity_type=activity_type, metric="kudos_count")
+    activity_most_kudos_img = generate_activity_story(
+        activity=activity_most_kudos, width=400, height=400, title=f"Fan Favorite"
+    )
+    img.paste(activity_most_kudos_img, (600, 1200))
+
     # save
     OUTPUT_FILE = f"{stats['type']}_wrapped.png"
     img.save(OUTPUT_FILE)
     print(f"Saved Instagram story to {OUTPUT_FILE}")
+
+
+def get_best_activity(activities: List[StravaActivity], activity_type: str, metric: str) -> StravaActivity:
+    """Get best acitivity of type activity_type based on the provided metric
+
+    Args:
+        activities (List[StravaActivity]): list of all activities
+        activity_type (str): the type of activities to consider
+        metric (str): the metric for which to determine the best (e.g. distance, kudos_count, moving_time, etc.)
+
+    Returns:
+        StravaActivity: the best activity from the list according to the provided metric
+    """
+    best = None
+    highest = 0
+    for activity in activities:
+        if activity[metric] > highest and activity["type"] == activity_type:
+            best = activity
+            highest = activity[metric]
+
+    return best
 
 
 def main():
@@ -185,8 +225,8 @@ def main():
 
     run_stats = summary_df[summary_df["type"] == "Run"].to_dict(orient="records")[0]
     ride_stats = summary_df[summary_df["type"] == "Ride"].to_dict(orient="records")[0]
-    sport_summary(stats=run_stats, athlete=athlete)
-    sport_summary(stats=ride_stats, athlete=athlete)
+    sport_summary(stats=run_stats, athlete=athlete, activities=activities, activity_type="Run")
+    sport_summary(stats=ride_stats, athlete=athlete, activities=activities, activity_type="Ride")
 
     # top_k_sports_summary(summary_df=summary_df, athlete=athlete, k=5)
 
