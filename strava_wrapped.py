@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -58,6 +58,54 @@ def top_k_sports_summary(summary_df: pd.DataFrame, athlete: StravaAthlete, k: in
     print(f"\nSaved graphic to strava_summary_{YEAR}.png")
 
 
+def get_weekly_distance(activities: List[StravaActivity]) -> Tuple[float, float]:
+    """Computes the average and peak weekly distance in miles for full weeks (Monday-Sunday),
+    excluding incomplete weeks at the beginning and end.
+
+    Args:
+        activities (List[StravaActivity]): List of Strava activities
+
+    Returns:
+        Tuple[float, float]: Average and peak weekly distances in miles
+    """
+    if not activities:
+        return 0.0
+
+    df = pd.DataFrame(activities)
+    df["start_date"] = pd.to_datetime(df["start_date"])
+    df["distance_miles"] = (df["distance"] / 1000) * 0.621371
+    df = df.sort_values("start_date")
+
+    min_date = df["start_date"].min()
+    max_date = df["start_date"].max()
+
+    # determine the start of the first full week
+    first_monday = min_date - pd.Timedelta(days=min_date.weekday())
+    if min_date.weekday() != 0:  # If first activity not on Monday, week is incomplete
+        first_monday += pd.Timedelta(days=7)
+
+    # determine the end of the last full week
+    last_sunday = max_date + pd.Timedelta(days=6 - max_date.weekday())
+    if max_date.weekday() != 6:  # If last activity not on Sunday, week is incomplete
+        last_sunday -= pd.Timedelta(days=7)
+
+    # filter activities to only include full weeks
+    df_filtered = df[(df["start_date"] >= first_monday) & (df["start_date"] <= last_sunday)]
+
+    if df_filtered.empty:
+        return 0.0
+
+    # group by week starting Monday and sum distances
+    df_filtered["week_start"] = df_filtered["start_date"].dt.to_period("W-MON").dt.start_time
+    weekly_distances = df_filtered.groupby("week_start")["distance_miles"].sum()
+
+    # compute average
+    average_weekly_distance = weekly_distances.mean()
+    peak_weekly_distance = weekly_distances.max()
+
+    return average_weekly_distance, peak_weekly_distance
+
+
 def sport_summary(
     stats: Dict[str, float], athlete: StravaAthlete, activities: List[StravaActivity], activity_type: str
 ) -> None:
@@ -108,10 +156,10 @@ def sport_summary(
         fill=STRAVA_ORANGE,
     )
     badge_icon_path = os.path.join("assets", f"{stats['type']}.png")
-    icon = Image.open(badge_icon_path).convert("RGBA").resize((360, 360))
+    icon = Image.open(badge_icon_path).convert("RGBA").resize((260, 260))
     img.paste(
         icon,
-        (badge_center[0] - 180, badge_center[1] - 180),
+        (badge_center[0] - 130, badge_center[1] - 130),
         icon,
     )
 
@@ -119,14 +167,17 @@ def sport_summary(
     stat_title_font = ImageFont.truetype(FONT_REG, 44)
     stat_value_font = ImageFont.truetype(FONT_BOLD, 64)
 
-    stats_y = 520
+    stats_y = 420
     row_gap = 140
 
+    avg_weekly_distance, peak_weekly_distance = get_weekly_distance(activities=activities)
     display_stats = [
-        (f"{activity_type.upper()}S", f"{stats['count']}"),
-        ("DISTANCE", f"{format_number_with_commas(int(stats['total_distance_miles']))} miles"),
-        ("ELEVATION", f"{format_number_with_commas(int(stats['total_elevation_gain_ft']))} ft"),
-        ("TIME", format_time(stats["moving_time_s"])),
+        (f"TOTAL {activity_type.upper()}S", f"{stats['count']}"),
+        ("TOTAL DISTANCE", f"{format_number_with_commas(int(stats['total_distance_miles']))} miles"),
+        ("TOTAL ELEVATION", f"{format_number_with_commas(int(stats['total_elevation_gain_ft']))} ft"),
+        ("TOTAL TIME", format_time(stats["moving_time_s"])),
+        ("AVERAGE WEEKLY DISTANCE", f"{round(avg_weekly_distance, 1)} miles"),
+        ("PEAK WEEKLY DISTANCE", f"{round(peak_weekly_distance, 1)} miles"),
     ]
 
     for i, (label, value) in enumerate(display_stats):
@@ -136,19 +187,19 @@ def sport_summary(
         draw.text((120, y + 50), value, font=stat_value_font, fill=TEXT_PRIMARY)
 
     # activity display section
-    activity_highlights_y = 1150
+    activity_highlights_y = 1300
     draw.text((120, activity_highlights_y), f"{YEAR} HIGHLIGHTS", font=stat_title_font, fill=TEXT_PRIMARY)
     activity_longest_distance = get_best_activity(activities=activities, activity_type=activity_type, metric="distance")
     activity_longest_img = generate_activity_story(
-        activity=activity_longest_distance, width=400, height=400, title=f"Longest {activity_type}"
+        activity=activity_longest_distance, width=450, height=450, title=f"Longest {activity_type}"
     )
-    img.paste(activity_longest_img, (100, 1200))
+    img.paste(activity_longest_img, (100, 1350))
 
     activity_most_kudos = get_best_activity(activities=activities, activity_type=activity_type, metric="kudos_count")
     activity_most_kudos_img = generate_activity_story(
-        activity=activity_most_kudos, width=400, height=400, title=f"Fan Favorite"
+        activity=activity_most_kudos, width=450, height=450, title=f"Fan Favorite"
     )
-    img.paste(activity_most_kudos_img, (600, 1200))
+    img.paste(activity_most_kudos_img, (550, 1350))
 
     # save
     OUTPUT_FILE = f"{stats['type']}_wrapped.png"
@@ -225,8 +276,10 @@ def main():
 
     run_stats = summary_df[summary_df["type"] == "Run"].to_dict(orient="records")[0]
     ride_stats = summary_df[summary_df["type"] == "Ride"].to_dict(orient="records")[0]
-    sport_summary(stats=run_stats, athlete=athlete, activities=activities, activity_type="Run")
-    sport_summary(stats=ride_stats, athlete=athlete, activities=activities, activity_type="Ride")
+    run_activities = [activity for activity in activities if activity["type"] == "Run"]
+    ride_activities = [activity for activity in activities if activity["type"] == "Ride"]
+    sport_summary(stats=run_stats, athlete=athlete, activities=run_activities, activity_type="Run")
+    sport_summary(stats=ride_stats, athlete=athlete, activities=ride_activities, activity_type="Ride")
 
     # top_k_sports_summary(summary_df=summary_df, athlete=athlete, k=5)
 

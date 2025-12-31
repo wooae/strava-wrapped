@@ -92,10 +92,10 @@ def generate_activity_story(activity: StravaActivity, width: int, height: int, t
     scale_y = height / 1920
 
     # Font sizes scaled
-    header_font_size = int(72 * scale_y)
-    activity_name_font_size = int(72 * scale_y)
-    stat_label_font_size = int(48 * scale_y)
-    stat_value_font_size = int(62 * scale_y)
+    header_font_size = int(128 * scale_y)
+    activity_name_font_size = int(128 * scale_y)
+    stat_label_font_size = int(86 * scale_y)
+    stat_value_font_size = int(112 * scale_y)
 
     header_font = ImageFont.truetype(FONT_BOLD, header_font_size)
     activity_name_font = ImageFont.truetype(FONT_BOLD, activity_name_font_size)
@@ -120,11 +120,11 @@ def generate_activity_story(activity: StravaActivity, width: int, height: int, t
     )
 
     map_x = int(90 * scale_x)
-    map_y = int(140 * scale_y)
+    map_y = int(180 * scale_y)
     img.paste(map_img, (map_x, map_y))
 
     activity_name_x = int(90 * scale_y)
-    activity_name_y = int(1080 * scale_y)
+    activity_name_y = int(1100 * scale_y)
     draw.text(
         (activity_name_x, activity_name_y),
         activity["name"],
@@ -134,11 +134,11 @@ def generate_activity_story(activity: StravaActivity, width: int, height: int, t
 
     stats = [
         ("KUDOS", str(activity["kudos_count"])),
-        ("DISTANCE", f"{activity['distance'] / 1000:.2f} km"),
+        ("DISTANCE", f"{activity['distance'] / 1000 * 0.621371:.2f} miles"),
         ("TIME", format_time(activity["moving_time"])),
     ]
 
-    stats_y = int(1200 * scale_y)
+    stats_y = int(1300 * scale_y)
     gap = int(200 * scale_y)
 
     for label, value in stats:
