@@ -1,8 +1,12 @@
 import json
 import os
-import requests
 import time
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+
+import requests
+
+from constants import StravaActivity
 
 
 STRAVA_TOKEN_FILE = "strava_tokens.json"
@@ -86,23 +90,28 @@ class StravaClient:
     # API calls
     # ---------------------------
 
-    def get_activities(self, after_date, per_page=200):
+    def get_activities(
+        self, after_date: datetime, end_date: Optional[datetime] = None, per_page: int = 200
+    ) -> List[StravaActivity]:
         """
-        Fetch all activities after a given datetime.
+        Fetch all activities after a given datetime, optionally before an end date.
         """
-        after_ts = int(after_date.replace(tzinfo=timezone.utc).timestamp())
+        params = {
+            "after": int(after_date.replace(tzinfo=timezone.utc).timestamp()),
+            "per_page": per_page,
+        }
+        if end_date is not None:
+            params["before"] = int(end_date.replace(tzinfo=timezone.utc).timestamp())
+
         page = 1
         activities = []
 
         while True:
+            params["page"] = page
             resp = requests.get(
                 os.path.join(STRAVA_BASE_URL, "athlete/activities"),
                 headers={"Authorization": f"Bearer {self._get_access_token()}"},
-                params={
-                    "after": after_ts,
-                    "per_page": per_page,
-                    "page": page,
-                },
+                params=params,
             )
             resp.raise_for_status()
             batch = resp.json()

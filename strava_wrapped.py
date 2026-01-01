@@ -241,9 +241,10 @@ def main():
     profile_pic_small = athlete["profile_medium"]
 
     start_of_year = datetime(YEAR, 1, 1)
+    end_of_year = datetime(YEAR + 1, 1, 1)  # exclusive
 
     print(f"Fetching activities since {start_of_year.date()}...")
-    activities = client.get_activities(start_of_year)
+    activities = client.get_activities(after_date=start_of_year, end_date=end_of_year)
 
     print(f"Fetched {len(activities)} activities")
 
