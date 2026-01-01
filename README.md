@@ -36,11 +36,19 @@ A fun project to generate Instagram-style "Wrapped" summaries from your Strava a
    python strava_wrapped.py
    ```
 
-2. **OAuth Authorization:**
+2. **OAuth Authorization (single time):**
    - The script will prompt you to authorize the app
+    ```
+    Open this URL in your browser and authorize the app:
+
+    https://www.strava.com/oauth/authorize?client_id=191048&response_type=code&redirect_uri=http://localhost/exchange_token&approval_prompt=force&scope=read,activity:read_all
+    ```
    - Open the provided URL in your browser
-   - Authorize the app and copy the authorization code
+   - Authorize the app and copy the authorization code from the URL
+     - http://localhost/exchange_token?state=&code=AUTHORIZATION_CODE_HERE&scope=read,activity:read_all
+     - Do not be alarmed to see an Unable to connect error - we are not actually running a server on localhost. Strava already generated the authorization code in the URL, which is all we need to continue.
    - Paste the code back into the terminal
+   - This step will create a local file `strava_tokens.json`, which will contain your access token that you will use to access the Strava API. You only need to do the OAuth Authorization once, then the script will automatically refresh the tokens (Strava access tokens expire every 6 hours) for you in `strava_tokens.json` so that you can run the script again in the future.
 
 3. **Wait for processing:**
    - The script will fetch your activities for the specified year
